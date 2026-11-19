@@ -81,6 +81,20 @@ python3 scripts/apply_translations.py
 
 Do not put in `qsTr` strings that are used in comparisons (`===`) or as keys.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request (GitHub-hosted runners, free for public
+repositories). In a Debian 13 container with Qt 6.11.1 (aqtinstall) it builds the app, runs the Android Auto
+self-test (`tests/androidauto`, with a throwaway self-signed certificate), starts the UI headless and fails on
+QML load errors or if the MapLibre libraries do not load, then reports `qmllint` warnings without failing. A
+second job checks the syntax of the Python services (`pyflakes` as a report only).
+
+The steps live in `scripts/ci_build.sh`, so they can be run locally with the same packages:
+
+```bash
+QT_PREFIX=~/Qt/6.11.1/gcc_64 bash scripts/ci_build.sh all     # or: build | aa-test | smoke | qmllint
+```
+
 ## Building the AppImage
 
 ```bash

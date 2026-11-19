@@ -102,8 +102,18 @@ If you have Qt from the official installer in `~/Qt`, the script uses that; othe
 
 ### Manual installation
 
-Qt 6 (6.9 or newer recommended) with the modules: Quick, Quick3D, WebEngine, WebSockets, Positioning,
-Location, VirtualKeyboard, WaylandCompositor, DBus, OpenGL, Multimedia, Svg. Then:
+Qt 6 (6.9 or newer recommended) with the modules: Quick, Quick3D, ShaderTools, WebEngine, WebSockets, Positioning,
+Location, VirtualKeyboard, WaylandCompositor, DBus, OpenGL, Multimedia, Svg and **Qt5Compat** (the UI uses
+`Qt5Compat.GraphicalEffects`). With [aqtinstall](https://github.com/miurahr/aqtinstall), no Qt account needed:
+
+```bash
+pipx install aqtinstall
+aqt install-qt linux desktop 6.11.1 linux_gcc_64 -O ~/Qt -m qt5compat qtquick3d qtshadertools \
+    qtquicktimeline qtwebengine qtwebchannel qtwebsockets qtpositioning qtlocation qtvirtualkeyboard \
+    qtwaylandcompositor qtmultimedia qtimageformats
+```
+
+Then:
 
 ```bash
 sudo apt install build-essential cmake pkg-config mpv libwayland-dev wayland-protocols libx11-dev \

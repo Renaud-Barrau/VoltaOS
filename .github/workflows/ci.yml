@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: 6.11.1
+  # Qt modules the app needs on top of qtbase/qtdeclarative/qttools (keep in sync with docs/installation.md)
+  QT_MODULES: >-
+    qt5compat qtquick3d qtshadertools qtquicktimeline qtwebengine qtwebchannel qtwebsockets
+    qtpositioning qtlocation qtvirtualkeyboard qtwaylandcompositor qtmultimedia qtimageformats
+
+jobs:
+  build:
+    name: Build and test (Debian 13, Qt 6.11.1)
+    runs-on: ubuntu-24.04
+    # Debian 13: the bundled MapLibre plugin needs its glibc and ICU 76
+    container: debian:trixie
+    timeout-minutes: 45
+    steps:
+      - name: System packages
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            git ca-certificates pipx \
+            build-essential cmake ninja-build pkg-config openssl libssl-dev protobuf-compiler libprotobuf-dev \
+            libwayland-dev wayland-protocols libx11-dev libusb-1.0-0-dev libavcodec-dev libavutil-dev \
+            libgl-dev libegl-dev libopengl-dev libxkbcommon-dev libfontconfig1-dev libfreetype-dev libdbus-1-dev \
+            libicu76 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libnss3 libxcomposite1 libxdamage1 \
+            libxrandr2 libxtst6 libasound2t64 libxkbfile1 libxshmfence1 libgbm1 libdrm2 libpulse0 python3
+
+      - uses: actions/checkout@v4
+
+      - name: Qt ${{ env.QT_VERSION }} (aqtinstall)
+        run: |
+          pipx install aqtinstall
+          ~/.local/bin/aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O /opt/Qt -m $QT_MODULES
+          echo "QT_PREFIX=/opt/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: bash scripts/ci_build.sh build
+
+      - name: Android Auto self-test
+        run: bash scripts/ci_build.sh aa-test
+
+      - name: Headless smoke test
+        run: bash scripts/ci_build.sh smoke
+
+      - name: qmllint (report only)
+        run: bash scripts/ci_build.sh qmllint
+
+      - name: Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            build/ci/smoke.log
+            build/ci/qmllint.log
+          if-no-files-found: ignore
+
+  python:
+    name: Python services
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: python3 -m py_compile services/*.py scripts/*.py
+      - name: pyflakes (report only)
+        run: pipx run pyflakes services scripts || echo "::warning::pyflakes reported issues (report only)"
