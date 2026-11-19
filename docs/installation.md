@@ -114,6 +114,11 @@ cmake -B build/Release -DCMAKE_BUILD_TYPE=Release
 cmake --build build/Release -j$(nproc)
 ```
 
+> **Android Auto certificate.** `third_party/aap_cert/headunit.key` is not in the repository. Without it the
+> build still succeeds (CMake prints a warning) and only native Android Auto (no dongle) lacks its certificate:
+> copy `headunit.key` from [aasdk](https://github.com/opencardev/aasdk) next to `headunit.crt` and re-run CMake,
+> or put both files in `~/.local/share/volta_os/` (see `third_party/aap_cert/README.md`).
+
 > **Maps plugin.** The MapLibre plugin included in `third_party/maplibre/` is built for
 > **Qt 6.11.1 on Linux x86_64**. With a different Qt version the map may not start:
 > build [maplibre-native-qt](https://github.com/maplibre/maplibre-native-qt) and install it in `/usr/local/qml`.

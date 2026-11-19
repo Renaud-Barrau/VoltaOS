@@ -50,10 +50,22 @@ find_package(Qt6 OPTIONAL_COMPONENTS WaylandCompositor QUIET)
 # once in their own library; the head unit certificate is baked into AaCert.cpp.
 find_package(OpenSSL REQUIRED)
 include(third_party/aap_protobuf/AapProtobuf.cmake)
-file(READ third_party/aap_cert/headunit.crt AA_CERT_PEM)
-file(READ third_party/aap_cert/headunit.key AA_KEY_PEM)
+# The key is optional at build time: without it the built-in pair stays empty and native Android Auto
+# only works with a headunit.crt/.key dropped in ~/.local/share/volta_os/ (see AaCert.cpp.in).
+set(AA_CERT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/aap_cert/headunit.crt)
+set(AA_KEY_FILE  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/aap_cert/headunit.key)
+if(EXISTS ${AA_CERT_FILE} AND EXISTS ${AA_KEY_FILE})
+    file(READ ${AA_CERT_FILE} AA_CERT_PEM)
+    file(READ ${AA_KEY_FILE} AA_KEY_PEM)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${AA_CERT_FILE} ${AA_KEY_FILE})
+else()
+    set(AA_CERT_PEM "")
+    set(AA_KEY_PEM "")
+    message(WARNING "third_party/aap_cert/headunit.key not found: native Android Auto (no dongle) is built "
+                    "without a certificate. Put headunit.crt/headunit.key in third_party/aap_cert/ and re-run "
+                    "cmake, or drop them in ~/.local/share/volta_os/ at runtime. See third_party/aap_cert/README.md.")
+endif()
 configure_file(src/androidauto/AaCert.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/AaCert.cpp @ONLY)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS third_party/aap_cert/headunit.crt third_party/aap_cert/headunit.key)
 
 # ── Executable ────────────────────────────────────────────────────────────────
 qt_add_executable(VoltaOS
