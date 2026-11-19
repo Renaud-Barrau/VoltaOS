@@ -43,6 +43,7 @@
 #include "DirtyProbe.h"
 #endif
 #include <QLibrary>
+#include <QLibraryInfo>
 
 // Project folder (Python scripts, assets, keys.env). Order:
 //   1. variabile d'ambiente VOLTA_DIR
@@ -550,10 +551,17 @@ int main(int argc, char *argv[])
             // The plugin's libraries have no search path of their own: their dependencies (Qt SQL from the
             // AppImage, ICU 76 next to them) must already be loaded, otherwise on a system without Qt
             // the map does not start. Files that do not exist are skipped (normal installations).
+            // Qt libraries come from the AppImage (../lib next to the executable) or, when built from
+            // source against a Qt outside the loader path (e.g. ~/Qt/6.x/gcc_64), from that Qt's own lib folder.
             const QString appLib = QCoreApplication::applicationDirPath() + "/../lib/";
-            for (const QString &dep : {appLib + "libQt6Sql.so.6", appLib + "libQt6Positioning.so.6",
-                                       appLib + "libQt6Location.so.6",
-                                       ml + "/lib/libicudata.so.76", ml + "/lib/libicuuc.so.76",
+            const QString qtLib = QLibraryInfo::path(QLibraryInfo::LibrariesPath) + "/";
+            for (const QString &name : {QStringLiteral("libQt6Sql.so.6"), QStringLiteral("libQt6Positioning.so.6"),
+                                        QStringLiteral("libQt6Location.so.6")}) {
+                for (const QString &dir : {appLib, qtLib}) {
+                    if (QFileInfo::exists(dir + name)) { QLibrary(dir + name).load(); break; }
+                }
+            }
+            for (const QString &dep : {ml + "/lib/libicudata.so.76", ml + "/lib/libicuuc.so.76",
                                        ml + "/lib/libicui18n.so.76"}) {
                 if (QFileInfo::exists(dep)) QLibrary(dep).load();
             }
