@@ -26,6 +26,12 @@ TOKEN = key("MAPBOX_TOKEN")
 MAPTILER_KEY = key("MAPTILER_KEY")
 OWM_KEY = key("OWM_KEY")
 TOMTOM_KEY = key("TOMTOM_KEY")
+# MapTiler map styles. The defaults are custom maps of the project author's MapTiler account: other accounts'
+# keys get 403 on them, so get_style() falls back to MapTiler's public styles. Set your own in keys.env.
+MAPTILER_STYLE_LIGHT = key("MAPTILER_STYLE_LIGHT", "01a059f2-13fd-7093-8f14-673805645690")
+MAPTILER_STYLE_DARK = key("MAPTILER_STYLE_DARK", "01a06434-8dc2-7506-b480-5e73d816c10d")
+_MAPTILER_PUBLIC_STYLES = {"light": "streets-v2", "dark": "streets-v2-dark"}
+_maptiler_refused = set()   # style ids this key may not use (401/403/404): not asked again until restart
 
 # ═══ RETE VELOCE: sessione condivisa + cache (RAM + disco) ═══════════════
 # Before, EVERY request (vector tile, font glyphs, sprite, style) opened
@@ -514,12 +520,20 @@ def get_style():
         response.headers['Cache-Control'] = 'no-store'
         return response
 
-    if s == "light":
-        url = "https://api.maptiler.com/maps/01a059f2-13fd-7093-8f14-673805645690/style.json?key=" + MAPTILER_KEY
-    else:
-        url = "https://api.maptiler.com/maps/01a06434-8dc2-7506-b480-5e73d816c10d/style.json?key=" + MAPTILER_KEY
-
-    base, _st = _fetch_cached('style', _md5(url), url, ttl=1800)
+    theme = "light" if s == "light" else "dark"
+    base = None
+    for style_id in (MAPTILER_STYLE_LIGHT if theme == "light" else MAPTILER_STYLE_DARK,
+                     _MAPTILER_PUBLIC_STYLES[theme]):
+        if style_id in _maptiler_refused:
+            continue
+        url = f"https://api.maptiler.com/maps/{style_id}/style.json?key=" + MAPTILER_KEY
+        base, status = _fetch_cached('style', _md5(url), url, ttl=1800)
+        if base is not None:
+            break
+        if status in (401, 403, 404):
+            _maptiler_refused.add(style_id)
+            print(f"[map_proxy] MapTiler style '{style_id}' refused for this key (HTTP {status}): "
+                  f"falling back", flush=True)
     if base is None:
         return jsonify({"error": "map style unreachable"}), 502
     data = json.loads(base)

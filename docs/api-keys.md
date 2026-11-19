@@ -31,6 +31,10 @@ with the same name takes precedence over the file. `keys.env` never goes to GitH
 | `OWM_KEY` | rain radar on the map (optional: works without it) | home.openweathermap.org › API keys; new keys can take up to 2 hours to activate | free |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | library, playlists and explore in the Spotify app | developer.spotify.com/dashboard › *Create app* | free (a free account is enough) |
 
+`MAPTILER_STYLE_LIGHT` / `MAPTILER_STYLE_DARK` (optional) choose the map styles: the id of a map from your MapTiler
+account (*Maps*, e.g. one you customized). The built-in defaults belong to the project author's account; if your
+key cannot use them, MapTiler's public `streets-v2` / `streets-v2-dark` are used instead.
+
 **Minimum for useful navigation:** `MAPBOX_TOKEN` + `MAPTILER_KEY` + `TOMTOM_KEY`.
 
 ### Spotify, step by step
