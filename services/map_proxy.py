@@ -495,8 +495,24 @@ def _compat_qt_maplibre(data):
     - "icon-overlap"/"text-overlap" do not exist yet: they become *-allow-overlap
       ("layer doesn't support this property");
     - sources with neither "tiles" nor "url" (e.g. maptiler_attribution, it only serves for the
-      credits text) are removed ("source must have tiles")."""
+      credits text) are removed ("source must have tiles");
+    - ["interpolate", ["linear", N], ...]: the "linear" interpolation takes no argument, MapTiler's public
+      styles (streets-v2) add one anyway and Qt MapLibre rejects the whole value (roads, borders, label
+      sizes silently lost): the argument is dropped."""
+    def fix_linear(x):
+        if isinstance(x, list):
+            if (len(x) > 1 and x[0] in ('interpolate', 'interpolate-hcl', 'interpolate-lab')
+                    and isinstance(x[1], list) and x[1][:1] == ['linear'] and len(x[1]) > 1):
+                x[1] = ['linear']
+            for y in x:
+                fix_linear(y)
+        elif isinstance(x, dict):
+            for y in x.values():
+                fix_linear(y)
+
     for layer in data.get('layers', []):
+        fix_linear(layer.get('paint'))
+        fix_linear(layer.get('layout'))
         lay = layer.get('layout')
         if not isinstance(lay, dict):
             continue
@@ -577,7 +593,8 @@ def get_style():
             "paint": {"raster-resampling": "linear", "raster-saturation": 0.18}
         }
         
-        ROAD_LAYER_IDS = {"Road network"}
+        # "Road network": the project's custom styles; the others: MapTiler's public streets-v2 (fallback)
+        ROAD_LAYER_IDS = {"Road network", "Minor road", "Major road", "Highway"}
 
         filtered_layers = []
         for layer in data.get('layers', []):
